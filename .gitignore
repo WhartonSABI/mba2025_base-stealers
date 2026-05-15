@@ -2,10 +2,17 @@
 ### DIRECTORIES ###
 ###################
 
+# old code
+archive/
+
+# internal outputs
+internal/
 
 # private mlb data
 data
 
+# local r library
+r_lib/
 
 #############
 ### FILES ###
