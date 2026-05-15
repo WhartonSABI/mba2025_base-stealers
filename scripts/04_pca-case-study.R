@@ -33,7 +33,7 @@ ctx <- list(
   threat = case_row$Threat[[1]],
   poptime = case_row$poptime[[1]],
   sprint_speed = case_row$sprint_speed[[1]],
-  dis_stage = as.integer(case_row$dis_stage[[1]]),
+  dis_state = as.integer(case_row$dis_state[[1]]),
   outs = as.integer(case_row$outs[[1]]),
   runner_id = case_row$Runner1B_ID[[1]],
   catcher_id = case_row$CatcherID[[1]]
@@ -48,7 +48,7 @@ grid_out <- lapply(lead_grid, function(lead_ft) {
     threat = ctx$threat,
     poptime = ctx$poptime,
     sprint_speed = ctx$sprint_speed,
-    dis_stage_val = ctx$dis_stage,
+    dis_state_val = ctx$dis_state,
     outs_val = ctx$outs,
     runner_id = ctx$runner_id,
     catcher_id = ctx$catcher_id,
@@ -73,7 +73,7 @@ optimum <- optimize(
       threat = ctx$threat,
       poptime = ctx$poptime,
       sprint_speed = ctx$sprint_speed,
-      dis_stage_val = ctx$dis_stage,
+      dis_state_val = ctx$dis_state,
       outs_val = ctx$outs,
       runner_id = ctx$runner_id,
       catcher_id = ctx$catcher_id,
@@ -94,7 +94,7 @@ obs_xruns <- as.numeric(
     threat = ctx$threat,
     poptime = ctx$poptime,
     sprint_speed = ctx$sprint_speed,
-    dis_stage_val = ctx$dis_stage,
+    dis_state_val = ctx$dis_state,
     outs_val = ctx$outs,
     runner_id = ctx$runner_id,
     catcher_id = ctx$catcher_id,
@@ -215,7 +215,7 @@ case_summary <- data.frame(
   observed_minus_optimal = case_row$PrimaryLead1B[[1]] - xopt,
   optimal_xRuns = yopt,
   outs = ctx$outs,
-  dis_stage = ctx$dis_stage
+  dis_state = ctx$dis_state
 )
 
 write.csv(case_summary, "data/processed/pca_case_study_summary.csv", row.names = FALSE)

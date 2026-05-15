@@ -78,7 +78,7 @@ leads <- leads %>%
   mutate(
     is_diseng = as.integer(Play == "Pickoff"),
     dis_used_before = dplyr::lag(cumsum(is_diseng), default = 0L),
-    dis_stage = factor(pmin(2L, dis_used_before), levels = c(0, 1, 2))
+    dis_state = factor(pmin(2L, dis_used_before), levels = c(0, 1, 2))
   ) %>%
   ungroup() %>%
   select(-row_in_game, -start_pa)
@@ -95,7 +95,7 @@ leads <- leads %>%
     outs_f = factor(as.integer(outs), levels = c(0, 1, 2)),
     Runner1B_ID = factor(Runner1B_ID),
     CatcherID = factor(CatcherID),
-    dis_stage = factor(dis_stage, levels = c(0, 1, 2)),
+    dis_state = factor(dis_state, levels = c(0, 1, 2)),
     PO_y = as.integer(Play == "Pickoff")
   )
 
@@ -126,13 +126,13 @@ sit_weights <- data.frame(
 message("Fitting stage models...")
 
 m_PO <- glm(
-  PO_y ~ lead_scaled + threat_scaled + dis_stage + outs_f,
+  PO_y ~ lead_scaled + threat_scaled + dis_state + outs_f,
   family = binomial(),
   data = leads
 )
 
 m_PK <- glmer(
-  PK1 ~ lead_scaled + threat_scaled + dis_stage + (1 | Runner1B_ID),
+  PK1 ~ lead_scaled + threat_scaled + dis_state + (1 | Runner1B_ID),
   family = binomial(),
   data = subset(leads, Play == "Pickoff"),
   control = glmerControl(optimizer = "bobyqa", optCtrl = list(maxfun = 2e5))
@@ -142,7 +142,7 @@ leads_pitch <- subset(leads, Play == "Pitch")
 leads_pitch$ATT_y <- as.integer(leads_pitch$SB1 == 1L | leads_pitch$CS1 == 1L)
 
 m_ATT <- glmer(
-  ATT_y ~ threat_scaled + poptime_scaled + sprint_scaled + dis_stage + outs_f +
+  ATT_y ~ threat_scaled + poptime_scaled + sprint_scaled + dis_state + outs_f +
     (1 | Runner1B_ID) + (1 | CatcherID),
   family = binomial(),
   data = leads_pitch,
@@ -153,7 +153,7 @@ leads_attempt <- subset(leads, SB1 == 1L | CS1 == 1L)
 leads_attempt$SB_y <- as.integer(leads_attempt$SB1 == 1L)
 
 m_SB <- glmer(
-  SB_y ~ lead_scaled + threat_scaled + poptime_scaled + sprint_scaled + dis_stage + outs_f +
+  SB_y ~ lead_scaled + threat_scaled + poptime_scaled + sprint_scaled + dis_state + outs_f +
     (1 | Runner1B_ID) + (1 | CatcherID),
   family = binomial(),
   data = leads_attempt,

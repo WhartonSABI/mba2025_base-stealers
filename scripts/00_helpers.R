@@ -41,13 +41,13 @@ safe_mclapply <- function(X, FUN, n_cores, ...) {
   }
 }
 
-build_scaled_newdata <- function(bundle, lead_ft, threat, poptime, sprint_speed, dis_stage_val, outs_val) {
+build_scaled_newdata <- function(bundle, lead_ft, threat, poptime, sprint_speed, dis_state_val, outs_val) {
   data.frame(
     lead_scaled = (lead_ft - bundle$scaler$lead_mean) / bundle$scaler$lead_sd,
     threat_scaled = (threat - bundle$scaler$threat_mean) / bundle$scaler$threat_sd,
     poptime_scaled = (poptime - bundle$scaler$pop_mean) / bundle$scaler$pop_sd,
     sprint_scaled = (sprint_speed - bundle$scaler$sprint_mean) / bundle$scaler$sprint_sd,
-    dis_stage = factor(dis_stage_val, levels = c(0, 1, 2)),
+    dis_state = factor(dis_state_val, levels = c(0, 1, 2)),
     outs_f = factor(outs_val, levels = c(0, 1, 2))
   )
 }
@@ -66,7 +66,7 @@ predict_outcome_probs <- function(
   threat,
   poptime,
   sprint_speed,
-  dis_stage_val,
+  dis_state_val,
   outs_val,
   runner_id = NA,
   catcher_id = NA,
@@ -78,7 +78,7 @@ predict_outcome_probs <- function(
     threat = threat,
     poptime = poptime,
     sprint_speed = sprint_speed,
-    dis_stage_val = dis_stage_val,
+    dis_state_val = dis_state_val,
     outs_val = outs_val
   )
 

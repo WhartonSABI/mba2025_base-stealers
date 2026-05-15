@@ -16,7 +16,7 @@ leads <- leads %>%
   mutate(
     Runner1B_ID = as.character(Runner1B_ID),
     CatcherID = as.character(CatcherID),
-    dis_stage = factor(dis_stage, levels = c(0, 1, 2))
+    dis_state = factor(dis_state, levels = c(0, 1, 2))
   )
 
 n_cores <- detect_n_cores(default_cores = 12L)
@@ -30,9 +30,9 @@ pick_coef <- function(beta, name) {
   }
 }
 
-dis_stage_effect <- function(beta, stage_int) {
-  d1 <- pick_coef(beta, "dis_stage1")
-  d2 <- pick_coef(beta, "dis_stage2")
+dis_state_effect <- function(beta, stage_int) {
+  d1 <- pick_coef(beta, "dis_state1")
+  d2 <- pick_coef(beta, "dis_state2")
   ifelse(stage_int == 1L, d1, ifelse(stage_int == 2L, d2, 0))
 }
 
@@ -76,7 +76,7 @@ runner_in <- function(ids, lookup) {
   as.numeric(out)
 }
 
-stage_int <- as.integer(as.character(leads$dis_stage))
+stage_int <- as.integer(as.character(leads$dis_state))
 outs_int <- as.integer(leads$outs)
 rid <- leads$Runner1B_ID
 cid <- leads$CatcherID
@@ -90,20 +90,20 @@ re_sb_v <- runner_in(cid, v_sb)
 eta_po <- pick_coef(b_po, "(Intercept)") +
   pick_coef(b_po, "lead_scaled") * leads$lead_scaled +
   pick_coef(b_po, "threat_scaled") * leads$threat_scaled +
-  dis_stage_effect(b_po, stage_int) +
+  dis_state_effect(b_po, stage_int) +
   outs_effect(b_po, outs_int)
 
 eta_pk <- pick_coef(b_pk, "(Intercept)") +
   pick_coef(b_pk, "lead_scaled") * leads$lead_scaled +
   pick_coef(b_pk, "threat_scaled") * leads$threat_scaled +
-  dis_stage_effect(b_pk, stage_int) +
+  dis_state_effect(b_pk, stage_int) +
   re_pk
 
 eta_att <- pick_coef(b_att, "(Intercept)") +
   pick_coef(b_att, "threat_scaled") * leads$threat_scaled +
   pick_coef(b_att, "poptime_scaled") * leads$poptime_scaled +
   pick_coef(b_att, "sprint_scaled") * leads$sprint_scaled +
-  dis_stage_effect(b_att, stage_int) +
+  dis_state_effect(b_att, stage_int) +
   outs_effect(b_att, outs_int) +
   re_att_u + re_att_v
 
@@ -112,7 +112,7 @@ eta_sb <- pick_coef(b_sb, "(Intercept)") +
   pick_coef(b_sb, "threat_scaled") * leads$threat_scaled +
   pick_coef(b_sb, "poptime_scaled") * leads$poptime_scaled +
   pick_coef(b_sb, "sprint_scaled") * leads$sprint_scaled +
-  dis_stage_effect(b_sb, stage_int) +
+  dis_state_effect(b_sb, stage_int) +
   outs_effect(b_sb, outs_int) +
   re_sb_u + re_sb_v
 
@@ -135,7 +135,7 @@ contexts <- leads %>%
     Threat = Threat,
     poptime = poptime,
     sprint_speed = sprint_speed,
-    dis_stage = as.integer(as.character(dis_stage)),
+    dis_state = as.integer(as.character(dis_state)),
     outs = as.integer(outs),
     Runner1B_ID = Runner1B_ID,
     CatcherID = CatcherID
@@ -155,7 +155,7 @@ optimize_one_context <- function(i) {
   thr_s <- to_scaled(ctx$Threat, scaler$threat_mean, scaler$threat_sd)
   pop_s <- to_scaled(ctx$poptime, scaler$pop_mean, scaler$pop_sd)
   spr_s <- to_scaled(ctx$sprint_speed, scaler$sprint_mean, scaler$sprint_sd)
-  d_int <- ctx$dis_stage
+  d_int <- ctx$dis_state
 
   u_pk_i <- if (ctx$Runner1B_ID %in% names(u_pk)) u_pk[[ctx$Runner1B_ID]] else 0
   u_att_i <- if (ctx$Runner1B_ID %in% names(u_att)) u_att[[ctx$Runner1B_ID]] else 0
@@ -167,14 +167,14 @@ optimize_one_context <- function(i) {
   slope_po <- pick_coef(b_po, "lead_scaled") / scaler$lead_sd
   int_po <- pick_coef(b_po, "(Intercept)") +
     pick_coef(b_po, "threat_scaled") * thr_s +
-    dis_stage_effect(b_po, d_int) +
+    dis_state_effect(b_po, d_int) +
     outs_effect(b_po, ctx$outs) -
     pick_coef(b_po, "lead_scaled") * (scaler$lead_mean / scaler$lead_sd)
 
   slope_pk <- pick_coef(b_pk, "lead_scaled") / scaler$lead_sd
   int_pk <- pick_coef(b_pk, "(Intercept)") +
     pick_coef(b_pk, "threat_scaled") * thr_s +
-    dis_stage_effect(b_pk, d_int) +
+    dis_state_effect(b_pk, d_int) +
     u_pk_i -
     pick_coef(b_pk, "lead_scaled") * (scaler$lead_mean / scaler$lead_sd)
 
@@ -183,7 +183,7 @@ optimize_one_context <- function(i) {
       pick_coef(b_att, "threat_scaled") * thr_s +
       pick_coef(b_att, "poptime_scaled") * pop_s +
       pick_coef(b_att, "sprint_scaled") * spr_s +
-      dis_stage_effect(b_att, d_int) +
+      dis_state_effect(b_att, d_int) +
       outs_effect(b_att, ctx$outs) +
       u_att_i + v_att_i
   )
@@ -193,7 +193,7 @@ optimize_one_context <- function(i) {
     pick_coef(b_sb, "threat_scaled") * thr_s +
     pick_coef(b_sb, "poptime_scaled") * pop_s +
     pick_coef(b_sb, "sprint_scaled") * spr_s +
-    dis_stage_effect(b_sb, d_int) +
+    dis_state_effect(b_sb, d_int) +
     outs_effect(b_sb, ctx$outs) +
     u_sb_i + v_sb_i -
     pick_coef(b_sb, "lead_scaled") * (scaler$lead_mean / scaler$lead_sd)
@@ -253,13 +253,13 @@ contexts <- contexts %>% left_join(opt_tbl, by = "context_id")
 
 leads_full <- leads %>%
   mutate(
-    dis_stage_int = as.integer(as.character(dis_stage)),
+    dis_state_int = as.integer(as.character(dis_state)),
     outs = as.integer(outs)
   ) %>%
   left_join(
     contexts %>%
       select(
-        Threat, poptime, sprint_speed, dis_stage, outs,
+        Threat, poptime, sprint_speed, dis_state, outs,
         Runner1B_ID, CatcherID,
         optLead_player, optxRuns_player, runner_known, catcher_known
       ),
@@ -267,7 +267,7 @@ leads_full <- leads %>%
       "Threat" = "Threat",
       "poptime" = "poptime",
       "sprint_speed" = "sprint_speed",
-      "dis_stage_int" = "dis_stage",
+      "dis_state_int" = "dis_state",
       "outs" = "outs",
       "Runner1B_ID" = "Runner1B_ID",
       "CatcherID" = "CatcherID"
@@ -279,7 +279,7 @@ leads_full <- leads %>%
     used_player_RE = runner_known & catcher_known,
     xRuns_lost = optxRuns_player - actual_xRuns
   ) %>%
-  select(-dis_stage_int)
+  select(-dis_state_int)
 
 write.csv(leads_full, "data/processed/leadsnew1b_full_v2.csv", row.names = FALSE)
 
