@@ -25,10 +25,21 @@ leads_full <- leads_full %>%
 # Main lead deviation histograms
 # ----------------------------
 mean_all <- mean(leads_full$leadDev_player, na.rm = TRUE)
+max_count_all <- max(hist(leads_full$leadDev_player, breaks = 40, plot = FALSE)$counts)
 
 fig_all <- ggplot(leads_full, aes(x = leadDev_player)) +
   geom_histogram(bins = 40, fill = "#7aa6c2", color = "white", alpha = 0.9) +
   geom_vline(xintercept = mean_all, color = "#b22222", linewidth = 1) +
+  annotate(
+    "text",
+    x = mean_all,
+    y = max_count_all * 0.95,
+    label = paste0("Mean = ", sprintf("%.2f", mean_all), " ft"),
+    color = "#b22222",
+    fontface = "bold",
+    hjust = ifelse(mean_all >= 0, -0.05, 1.05),
+    vjust = 1
+  ) +
   labs(
     title = "Lead Deviation Distribution (All Situations)",
     x = "Lead Deviation = Observed Lead - Optimal Lead (ft)",
@@ -46,10 +57,21 @@ ggsave(
 
 sb_attempts <- leads_full %>% filter(SB1 == 1 | CS1 == 1)
 mean_sb <- mean(sb_attempts$leadDev_player, na.rm = TRUE)
+max_count_sb <- max(hist(sb_attempts$leadDev_player, breaks = 35, plot = FALSE)$counts)
 
 fig_sb <- ggplot(sb_attempts, aes(x = leadDev_player)) +
   geom_histogram(bins = 35, fill = "#4f9a94", color = "white", alpha = 0.9) +
   geom_vline(xintercept = mean_sb, color = "#b22222", linewidth = 1) +
+  annotate(
+    "text",
+    x = mean_sb,
+    y = max_count_sb * 0.95,
+    label = paste0("Mean = ", sprintf("%.2f", mean_sb), " ft"),
+    color = "#b22222",
+    fontface = "bold",
+    hjust = ifelse(mean_sb >= 0, -0.05, 1.05),
+    vjust = 1
+  ) +
   labs(
     title = "Lead Deviation Distribution (Steal Attempts)",
     x = "Lead Deviation = Observed Lead - Optimal Lead (ft)",

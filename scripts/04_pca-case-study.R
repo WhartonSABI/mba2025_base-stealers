@@ -86,6 +86,21 @@ optimum <- optimize(
 
 xopt <- as.numeric(optimum$maximum)
 yopt <- as.numeric(optimum$objective)
+obs_lead <- as.numeric(case_row$PrimaryLead1B[[1]])
+obs_xruns <- as.numeric(
+  predict_outcome_probs(
+    bundle = bundle,
+    lead_ft = obs_lead,
+    threat = ctx$threat,
+    poptime = ctx$poptime,
+    sprint_speed = ctx$sprint_speed,
+    dis_stage_val = ctx$dis_stage,
+    outs_val = ctx$outs,
+    runner_id = ctx$runner_id,
+    catcher_id = ctx$catcher_id,
+    use_re = TRUE
+  )$xRuns[[1]]
+)
 
 grid_long <- grid_df %>%
   pivot_longer(
@@ -139,7 +154,9 @@ label_hjust <- if (label_x > xopt) 0 else 1
   geom_area(data = subset(grid_df, ev_pos), aes(y = xRuns), alpha = 0.15, fill = "#0072B2") +
   geom_line(color = "#0072B2", linewidth = 1.3) +
   geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_vline(xintercept = obs_lead, color = "#1f77b4", linewidth = 1, linetype = "dashed") +
   geom_vline(xintercept = xopt, color = "red", linewidth = 1) +
+  annotate("point", x = obs_lead, y = obs_xruns, color = "#1f77b4", size = 3) +
   annotate("point", x = xopt, y = yopt, color = "red", size = 3) +
   annotate(
     "segment",
