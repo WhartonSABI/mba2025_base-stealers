@@ -5,7 +5,7 @@ stages <- c(
   "scripts/02_optimize-leads.R",
   "scripts/03_paper-figures.R",
   "scripts/04_pca-case-study.R",
-  "internal/05_compile_paper.R"
+  "scripts/05_compile-paper.R"
 )
 
 for (stage in stages) {

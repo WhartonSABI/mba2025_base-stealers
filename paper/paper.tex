@@ -11,8 +11,8 @@
 \usepackage{enumitem}
 \usepackage{authblk}
 \usepackage{parskip}
-\usepackage{xcolor}
 \usepackage{textcomp}
+\usepackage[table]{xcolor}
 \usepackage{siunitx}
 \usepackage{hyperref}
 \usepackage{geometry}
@@ -38,14 +38,16 @@
 
 \title{A Run Expectancy Approach to Lead Distance Optimization in Major League Baseball}
 
-\author[1]{Jack Whitney-Epstein}
-\author[2]{Zach Sissman}
-\author[3]{Lila Dodson}
+\author[1]{Zach Sissman}
+\author[2]{Lila Dodson}
+\author[3]{Jack Whitney-Epstein}
+\author[4]{Jonathan Pipping-Gam\'on}
 
 % Affiliations
-\affil[1]{\small The Brunswick School, Greenwich, CT}
-\affil[2]{\small Community School of Naples, Naples, FL}
-\affil[3]{\small San Francisco University High School, San Francisco, CA}
+\affil[1]{\small Community School of Naples, Naples, FL}
+\affil[2]{\small San Francisco University High School, San Francisco, CA}
+\affil[3]{\small The Brunswick School, Greenwich, CT}
+\affil[4]{\small Department of Statistics \& Data Science, University of Pennsylvania}
 
 \date{\today}
 
@@ -54,7 +56,7 @@
 \maketitle
 
 \begin{abstract}
-A runner's primary lead off first base creates a trade-off: a larger lead improves the runner's chance of stealing second but also increases exposure to pickoff attempts. Using 2024 MLB pitch-level data and Baseball Savant tracking measures, we model this trade-off as a sequential process with four stages: pickoff attempt, pickoff success conditional on an attempt, steal attempt conditional on no pickoff, and steal success conditional on an attempt. Each stage is estimated with logistic or mixed-effects logistic regression using lead distance, pitcher hold quality, runner sprint speed, catcher pop time, disengagement state, and outs, with runner and catcher random effects where appropriate. We then map the fitted stage probabilities to outs-specific RE24 run values and choose the lead distance that maximizes expected runs for each pitcher--catcher--runner context. Observed leads are slightly larger than the model-implied optimum on average: +0.13 ft across all runner-on-first pitches and +0.10 ft on steal attempts. The framework converts the steal--pickoff trade-off into a common run-expectancy scale and provides context-specific lead recommendations.
+In baseball, a runner's primary lead off first base creates a trade-off: a larger lead improves the runner's chance of stealing second but also increases exposure to pickoff attempts. Using 2024 MLB pitch-level data and Baseball Savant tracking measures, we model this trade-off as a sequential process with four stages: pickoff attempt, pickoff success conditional on an attempt, steal attempt conditional on no pickoff, and steal success conditional on an attempt. Each stage is estimated with logistic or mixed-effects logistic regression using lead distance, pitcher hold quality, runner sprint speed, catcher pop time, disengagement state, and outs, with runner and catcher random effects where appropriate. We then map the fitted stage probabilities to outs-specific RE24 run values and choose the lead distance that maximizes expected runs for each runner--pitcher--catcher and game context. Observed leads are slightly larger than the model-implied optimum on average: +0.13 ft across the analyzed runner-on-first opportunities and +0.10 ft on steal attempts. Translating these deviations to a common run-expectancy scale, we estimate a model-implied total of 38.8 expected runs lost across the analyzed 2024 sample and find that aggressive deviations carry roughly 3.3 times the per-opportunity run cost of conservative deviations. The framework converts the steal--pickoff trade-off into a common run-expectancy scale and provides context-specific lead estimates.
 \end{abstract}
 
 \section{Introduction}
@@ -104,13 +106,15 @@ A complementary physics approach examines the kinematics of a steal attempt. Usi
 
 Data-driven work using tracking-era measurements shows how player behavior and pitcher tendencies shape leads. \citet{Lindbergh2015Statcast} uses MLB data on primary and secondary leads and sprint speed, highlighting outliers such as Jon Lester's reluctance to throw over and Ichiro Suzuki's larger-than-expected leads relative to speed. That study also notes a positive association between sprint speed and lead size. It does not, however, jointly model runner, pitcher, and catcher characteristics, nor does it connect the full decision sequence from pickoff attempt to steal outcome to expected runs.
 
-This study extends the existing literature in four ways. First, we model the baserunning sequence with a nested set of logistic regressions. Second, we incorporate runner sprint speed, pitcher hold ability (\emph{Threat}), catcher pop time, disengagement state, and outs in the relevant stages. Third, we use random effects to account for unobserved runner and catcher heterogeneity. Fourth, we optimize primary lead distance to maximize expected runs for the base state with a runner on first and second and third base empty. In doing so, we quantify the reward of a larger lead and the cost of greater pickoff risk on a common run-expectancy scale.
+More recently, \citet{Powers2026SequentialGameModel} models lead distance under MLB's 2023 disengagement-limit rules as a sequential zero-sum game between the runner and pitcher. Using generalized linear mixed-effects models and a Markov decision process, Powers estimates that optimal lead-distance policies vary by count, outs, and prior pickoff attempts. Powers also finds that runners should substantially extend their leads after disengagements, while pitchers attempt fewer pickoffs than the game-theoretic optimum. However, that framework focuses primarily on equilibrium strategies under league-average conditions rather than estimating a context-specific optimal lead for individual runner--pitcher--catcher matchups on a unified expected-runs scale.
+
+This study extends the existing literature in four ways. First, we model the baserunning sequence with a nested set of logistic regressions. Second, we incorporate runner sprint speed, pitcher hold ability (\emph{Threat}), catcher pop time, disengagement state, and outs in the relevant stages. Third, we use random effects to account for unobserved runner and catcher heterogeneity. Fourth, we optimize primary lead distance to maximize expected runs for the base state with a runner on first, with second and third base empty. In doing so, we quantify the reward of a larger lead and the cost of greater pickoff risk on a common run-expectancy scale.
 
 \section{Methodology}
 
 \subsection{Data Overview}
 
-Our primary dataset, provided by MLB, consists of 2024 pitch-level observations. It includes all pickoff attempts, a random sample of called pitches, and every stolen-base attempt on takes, defined as pitches where the batter did not swing. The unit of observation is a single pitch. Each observation includes pitch context (inning, date, home/away, count, and outs), participant IDs (runner, pitcher, and catcher), and the runner's primary and secondary lead distances in feet. We denote the primary lead by $L_i$. To avoid base-state confounding, we restrict the analysis to the state with a runner on first and second and third base empty. Under this restriction, the only base-out component that varies in the run-expectancy calculation is the number of outs.
+Our primary dataset, provided by MLB, consists of 2024 pitch-level observations. It includes all pickoff attempts, a random sample of called pitches, and every stolen-base attempt on takes, defined as pitches where the batter did not swing. The unit of observation is a single pitch. Each observation includes pitch context (inning, date, home/away, count, and outs), participant IDs (runner, pitcher, and catcher), and the runner's primary and secondary lead distances in feet. A primary lead is defined as the distance from the runner's center of mass to the respective base at the time of the pitcher's first movement. We denote the primary lead by $L_i$. To avoid base-state confounding, we restrict the analysis to the state with a runner on first, with second and third base empty. Under this restriction, the only base-out component that varies in the run-expectancy calculation is the number of outs.
 
 We merge the pitch-level data with the following covariates from Baseball Savant:
 \begin{itemize}
@@ -121,7 +125,7 @@ We merge the pitch-level data with the following covariates from Baseball Savant
     \item Outs, $o_i \in \{0,1,2\}$.
 \end{itemize}
 
-All continuous predictors (lead distance, pitcher Threat, catcher pop time, and runner sprint speed) are standardized by subtracting their sample mean and dividing by their sample standard deviation. This places predictors on comparable scales. In the logistic models below, each continuous coefficient represents the change in log-odds associated with a one-standard-deviation increase in the predictor.
+All continuous predictors (lead distance, pitcher Threat, catcher pop time, and runner sprint speed) are standardized by subtracting their sample mean and dividing by their sample standard deviation. This places predictors on comparable scales. In the logistic models below, each continuous coefficient represents the change in log-odds associated with a one-standard-deviation increase in the predictor. In the optimization step, candidate lead distances are evaluated in feet but standardized using the same lead-distance mean and standard deviation used to fit the models; the resulting optimum is then transformed back to feet for reporting.
 
 To evaluate the expected value of base-stealing outcomes, we use situational weights derived from the RE24 run expectancy table (Table~\ref{tab:re24}):
 \begin{equation}
@@ -129,7 +133,7 @@ To evaluate the expected value of base-stealing outcomes, we use situational wei
     + w_{\mathrm{CS}}(o_i) \cdot \mathbf{1}\{\mathrm{CS}_i\}
     + w_{\mathrm{PK}}(o_i) \cdot \mathbf{1}\{\mathrm{PK}_i\}. \label{eq:xRuns}
 \end{equation}
-Here $w_{\mathrm{SB}}(o_i)$, $w_{\mathrm{CS}}(o_i)$, and $w_{\mathrm{PK}}(o_i)$ are the changes in run expectancy associated with a stolen base, caught stealing, and pickoff, respectively, given the current number of outs. Because the analysis is restricted to runner on first with second and third empty, these weights vary only by outs.
+Here $w_{\mathrm{SB}}(o_i)$, $w_{\mathrm{CS}}(o_i)$, and $w_{\mathrm{PK}}(o_i)$ are the changes in run expectancy associated with a stolen base, caught stealing, and pickoff, respectively, given the current number of outs. Because the analysis is restricted to a runner on first, with second and third base empty, these weights vary only by outs.
 
 \subsection{Modeling Framework}
 
@@ -150,11 +154,11 @@ We model the pickoff-attempt stage with a fixed-effects logistic regression and 
 \end{align}
 Here $u_{i,\cdot}$ and $z_{i,\cdot}$ denote runner- and catcher-specific random intercept terms for the corresponding stages. The notation $r_i$ and $o_i$ in Equations~\ref{eq:node-1}--\ref{eq:node-4} is shorthand for categorical fixed effects, with 0 prior disengagements and 0 outs used as the reference levels.
 
-We exclude outs from the pickoff-success-given-attempt stage. Once a throw-over occurs, pickoff success is more directly tied to lead distance, pitcher move quality, runner traits, and disengagement context than to the base-out valuation. This restriction also keeps the pickoff-success stage parsimonious, since successful pickoffs are relatively rare.
+We exclude outs from the pickoff-success-given-attempt stage. Once a throw-over occurs, pickoff success is more directly tied to lead distance, pitcher control of the running game, runner traits, and disengagement context than to the base-out valuation. This restriction also keeps the pickoff-success stage parsimonious, since successful pickoffs are relatively rare.
 
-We also exclude primary lead distance from the steal-attempt model. This treats the attempt model as capturing the runner's baseline green-light tendency after conditioning on pitcher, catcher, runner, disengagement state, and outs. Including lead distance in this stage would risk using the runner's realized pre-pitch positioning as a proxy for unobserved steal intent, which would partially absorb the effect of lead distance that the optimization is designed to study.
+We also exclude primary lead distance from the steal-attempt model. This treats the attempt model as capturing the runner's baseline steal-attempt propensity after conditioning on pitcher, catcher, runner, disengagement state, and outs. Including lead distance in this stage would risk using the runner's realized pre-pitch positioning as a proxy for unobserved steal intent, which would partially absorb the effect of lead distance that the optimization is designed to study.
 
-Let $X_i=(\theta_i,p_i,v_i,r_i,o_i)$ represent the observed player characteristics and game context for pitch $i$. The unconditional stage probabilities are then
+Let $X_i=(\theta_i,p_i,v_i,r_i,o_i)$ denote the observed covariate context for pitch $i$. When player-specific random effects are used in prediction, the full prediction context also includes runner and catcher IDs. The unconditional stage probabilities are then
 \begin{align*}
     \P(\mathrm{PK}_i \mid L_i, X_i)
     &= \P(\mathrm{PK}_i \mid \mathrm{PO}_i, L_i, \theta_i, r_i)\cdot
@@ -193,7 +197,24 @@ We solve Equation~\ref{eq:optimization} using R's \texttt{optimize()} function, 
 
 \subsection{Model Estimates} \label{sec:model-estimates}
 
-We report coefficient estimates for the logistic and mixed-effects logistic regressions in Tables~\ref{tab:po}--\ref{tab:sb_att}. All interpretations below are associative rather than causal, conditional on the included covariates and model specification. The fitted models recover the expected qualitative trade-off: larger leads are associated with both more pickoff attempts and substantially higher pickoff success conditional on an attempt, while also being associated with higher steal success conditional on a steal attempt.
+Table~\ref{tab:model_summary} summarizes the main fitted-model patterns; full coefficient estimates are reported in Appendix Tables~\ref{tab:po}--\ref{tab:sb_att}. All interpretations below are associative rather than causal, conditional on the included covariates and model specification. The fitted models recover the expected qualitative trade-off: larger leads are associated with both more pickoff attempts and substantially higher pickoff success conditional on an attempt, while also being associated with higher steal success conditional on a steal attempt.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Summary of fitted model patterns}
+\label{tab:model_summary}
+\begin{tabular}{lp{0.42\textwidth}p{0.25\textwidth}r}
+\toprule
+\textbf{Stage} & \textbf{Main fitted pattern} & \textbf{Random effects} & \textbf{Obs.} \\
+\midrule
+PO & Larger leads are associated with higher pickoff-attempt odds; prior disengagements also increase attempt odds. & None & 72,645 \\
+PK $\mid$ PO & Larger leads and stronger pitcher \emph{Threat} are associated with higher pickoff-success odds. & Runner & 7,439 \\
+ATT $\mid \neg$PO & Higher runner sprint speed and prior disengagements increase steal-attempt odds; stronger pitcher \emph{Threat} lowers attempt odds. & Runner, catcher & 65,206 \\
+SB $\mid$ ATT & Larger leads and slower catcher pop times are associated with higher steal-success odds. & Runner, catcher & 2,434 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 In the pickoff-attempt model (Table~\ref{tab:po}), a one-standard-deviation increase in lead distance is associated with roughly 36\% higher odds of a throw-over ($\exp(0.309)\approx1.36$), while a one-standard-deviation increase in pitcher \emph{Threat} is associated with roughly 5\% lower odds of a pickoff attempt ($\exp(-0.052)\approx0.95$). After one prior pickoff attempt, the odds of attempting another pickoff increase by about 75\% ($\exp(0.561)\approx1.75$). After two prior pickoff attempts, the odds increase by about 65\% ($\exp(0.502)\approx1.65$). Relative to 0 outs, 1 out is associated with higher pickoff-attempt odds ($\exp(0.092)\approx1.10$), while the 2-outs contrast is not statistically distinguishable from zero.
 
@@ -203,7 +224,151 @@ In the steal-attempt-given-no-pickoff model (Table~\ref{tab:att_no_po}), a one-s
 
 In the steal-success-given-attempt model (Table~\ref{tab:sb_att}), a one-standard-deviation increase in lead distance is associated with roughly 16\% higher odds of success ($\exp(0.148)\approx1.16$), while a one-standard-deviation increase in pitcher \emph{Threat} is associated with roughly 25\% lower odds ($\exp(-0.286)\approx0.75$). Success odds are also higher with slower catcher pop times (about 33\% per standard deviation; $\exp(0.286)\approx1.33$). Sprint speed shows a marginal positive association ($p=0.071$), disengagement-stage effects are not statistically significant, and the outs terms are not statistically significant in this stage. Random effects remain modest (runner variance = 0.127, catcher variance = 0.011), suggesting that much of the observed variation in steal success is captured by the included situational variables.
 
-Overall, these associations align with baseball intuition and indicate that the model stack captures the intended trade-off between lead size, pickoff risk, and steal success. The probability estimates should be interpreted as model-implied quantities for the analyzed pitch sample rather than as definitive causal effects.
+Overall, these associations align with baseball intuition and indicate that the sequential model captures the intended trade-off between lead size, pickoff risk, and steal success. The probability estimates should be interpreted as model-implied quantities for the analyzed pitch sample rather than as definitive causal effects.
+
+\subsection{Expected Runs and Lead Deviation}
+
+For each prediction context, consisting of the covariates $X_i=(\theta_i,p_i,v_i,r_i,o_i)$ and, where available, runner and catcher IDs, we compute $\mathrm{xRuns}(L\mid X_i)$ for each candidate lead distance $L\in\mathcal{L}$ using Equation~\ref{eq:xRuns-estimable}. We then report the model-implied optimal lead as in Equation~\ref{eq:optimization}:
+\[
+    L_i^* = \underset{L\in\mathcal{L}}{\arg\max}\ \mathrm{xRuns}(L\mid X_i).
+\]
+We define lead deviation as
+\begin{equation}
+    d_i \equiv L_i^{\mathrm{obs}} - L_i^*. \label{eq:deviation}
+\end{equation}
+Positive values indicate observed leads that are larger than the model-implied optimum, while negative values indicate observed leads that are smaller. Across all runner-on-first observations, deviations are centered slightly above zero, with a mean of +0.13 ft (Figure~\ref{fig:deviation_all}). On steal attempts, the mean deviation remains positive at +0.10 ft (Figure~\ref{fig:deviation_sba}). Thus, runners in this sample tend to take slightly more aggressive leads than the model-implied optimum, though the average difference is small relative to typical primary lead distances.
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/Lead-Error-All-MMNew.png}
+    \caption{Distribution of lead deviations across all situations. Positive values indicate observed leads larger than the model-implied optimum; the red vertical line and label mark the sample mean (+0.13 ft).}
+    \label{fig:deviation_all}
+\end{figure}
+
+\begin{figure}[!htbp]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figures/Lead-Error-SB-MMNew.png}
+    \caption{Distribution of lead deviations when a stolen base is attempted. The mean remains positive but is lower than the all-situations mean; the red vertical line and label mark the sample mean (+0.10 ft).}
+    \label{fig:deviation_sba}
+\end{figure}
+
+\subsection{Case Study: Cubs vs. Pirates, August 28, 2024}
+
+In an August 28, 2024 game between the Chicago Cubs and Pittsburgh Pirates, Pete Crow-Armstrong (PCA) took an 11.46-foot lead against pitcher Paul Skenes and catcher Yasmani Grandal (Figure~\ref{fig:example_case}). Given PCA's sprint speed of 30 ft/s, Skenes's estimated Threat of 4.04, Grandal's pop time of 2.09 seconds, and the game context, the model produces an optimal lead estimate of $L_i^*=11.33$ ft. PCA's observed lead exceeds this estimate by only 0.13 ft, so the example should be read primarily as an illustration of the model-implied trade-off rather than as evidence of a meaningfully suboptimal lead.
+
+Figure~\ref{fig:implied_probs} displays the model-implied probabilities of SB, CS, and PK as functions of primary lead $L$. Figure~\ref{fig:optimal_lead} separately shows that a lead distance of 11.33 ft maximizes the estimated expected run value (+0.012). This turning point reflects the lead-taking trade-off: larger leads increase the probability of reaching second safely, but eventually the increased pickoff risk dominates.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/pca.png}
+    \caption{Pete Crow-Armstrong on first base, Paul Skenes pitching, and Yasmani Grandal catching offscreen. \citep{CubsvPirates2024}}
+    \label{fig:example_case}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/pca-probs-MMNew.png}
+    \caption{Model-implied outcome probabilities as functions of Pete Crow-Armstrong's primary lead distance.}
+    \label{fig:implied_probs}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\textwidth]{figures/pca-xruns-MMNew.png}
+    \caption{Estimated expected run value as a function of Pete Crow-Armstrong's primary lead distance. The red marker denotes the model-implied optimal lead, and the blue dashed marker denotes PCA's observed lead in the play.}
+    \label{fig:optimal_lead}
+\end{figure}
+
+\subsection{Player and Team Lead Deviation} \label{sec:player-team-deviation}
+
+Lead deviation varies across teams (Figure~\ref{fig:deviation_by_team}). The New York Yankees exhibit the largest mean absolute deviation in our sample by a wide margin, about 0.61 ft above the next highest team, while the Cleveland Guardians and Seattle Mariners are closest to the model-implied optimum on average.
+
+The player-level tables (Tables~\ref{tab:runners_closest}--\ref{tab:runners_conservative}) provide context for this team-level pattern. Three Yankees runners (Anthony Volpe, Juan Soto, and Aaron Judge) appear among the ten most conservative runners, with mean deviations between $-2.32$ and $-3.32$ ft. This concentration is consistent with the Yankees' high team-level absolute deviation. Across the broader sample, the ten most conservative runners deviate from the model-implied optimum by 1.9 to 3.6 ft on average, while the ten most aggressive deviate by 2.4 to 5.3 ft. The runners closest to the optimum show mean absolute deviations below 0.85 ft. All runner lists below include only players with at least 15 observations.
+
+These plots should be read as exploratory summaries rather than definitive rankings, since the estimates do not include uncertainty intervals.
+
+\subsection{Run-Expectancy Cost} \label{sec:run-cost}
+
+While lead deviation in feet describes how far observed leads sit from the model-implied optimum, it does not directly express the run-expectancy consequence of that deviation. We define the model-implied run cost of an observed lead as
+\begin{equation}
+    \mathrm{xRuns\_lost}_i \equiv \mathrm{xRuns}(L_i^* \mid X_i) - \mathrm{xRuns}(L_i^{\mathrm{obs}} \mid X_i), \label{eq:xruns-lost}
+\end{equation}
+which is non-negative since $L_i^*$ maximizes the expected run value at context $X_i$.
+
+Across the analyzed 2024 sample, the model implies a total of 38.8 expected runs lost to suboptimal leads, with a mean of 0.00053 xRuns lost per opportunity.
+
+Our analyzed data include observed pickoff attempts, stolen-base attempts on takes, and no-swing runner-on-first opportunities included in the 2024 pitch-level sample. Because pitches with swings can introduce additional advancement mechanisms not represented in Equation~\ref{eq:xRuns-estimable}, we interpret the resulting 38.8 expected runs lost as a model-implied total over the analyzed steal--pickoff opportunity set, rather than as a claim about every runner-on-first pitch in the full 2024 season.
+
+Aggregating $\mathrm{xRuns\_lost}_i$ to the team level (Figure~\ref{fig:team_run_cost}) shows that the Los Angeles Angels accumulated the largest total run cost in 2024 (2.00 xRuns), followed by the Boston Red Sox (1.79) and the Los Angeles Dodgers (1.72). The team ordering by run cost differs substantially from the ordering by mean absolute deviation (Figure~\ref{fig:deviation_by_team}). Most notably, the New York Yankees, who exhibit the largest mean absolute deviation in our sample, rank only 13th in total run cost. This contrast suggests that not all deviations are equally costly.
+
+At the player level, ranking runners by total $\mathrm{xRuns\_lost}_i$ produces different leaderboards depending on the direction of their typical deviation. Figure~\ref{fig:run_cost_signed} presents the five most costly aggressive runners (positive mean deviation) and the five most costly conservative runners (negative mean deviation), each ranked by total run cost. Daniel Vogelbach leads the aggressive table at 0.51 xRuns lost despite only 25 observations, reflecting a high per-opportunity cost. On the conservative side, totals are more modest: the most costly conservative runner accumulates 0.73 xRuns over the season.
+
+\begin{figure}[!htbp]
+    \centering
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/run_cost_aggressive.png}
+        \caption{Most costly aggressive runners (positive mean deviation).}
+        \label{fig:run_cost_aggressive}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[t]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{figures/run_cost_conservative.png}
+        \caption{Most costly conservative runners (negative mean deviation).}
+        \label{fig:run_cost_conservative}
+    \end{subfigure}
+    \caption{Top five runners by total model-implied run cost in 2024, split by direction of mean lead deviation. Aggressive runners (left) reach higher per-opportunity costs; conservative runners (right) accumulate more modest totals.}
+    \label{fig:run_cost_signed}
+\end{figure}
+
+The contrast between the aggressive and conservative tables reflects a broader pattern: aggressive deviations carry a substantially higher run cost per opportunity than conservative deviations. Across all observations, the mean per-opportunity run cost is 0.00079 xRuns on pitches with a positive deviation and 0.00024 xRuns on pitches with a negative deviation, a ratio of approximately 3.3 to 1. This asymmetry explains the team-level contrast noted earlier: the New York Yankees deviate most in absolute terms but rank only 13th in total run cost because their deviation is concentrated on the conservative side, which the model treats as a less costly form of suboptimal lead choice. The implication is that lead deviation and run cost are not interchangeable measures of suboptimal baserunning, and that evaluating runners on deviation alone overstates the cost of conservative behavior relative to aggressive behavior. 
+
+\FloatBarrier
+\section{Discussion}
+
+\subsection{Conclusions}
+
+This study estimates primary lead distances off first base by placing the steal--pickoff trade-off on an outs-specific run-expectancy scale. The sequential model combines pickoff, steal-attempt, and steal-success probabilities with RE24 weights to produce a context-specific model-implied optimal lead and a run-cost measure for observed deviations.
+
+In the analyzed 2024 sample, observed leads are close to the model-implied optimum on average: +0.13 ft across all runner-on-first opportunities and +0.10 ft on steal attempts. The fitted trade-off produces an expected-run profile with an interior maximum in the PCA case study and in many of the empirical contexts we evaluate. The associated model-implied cost is 38.8 expected runs, but that cost is asymmetric: aggressive deviations carry roughly 3.3 times the per-opportunity run cost of conservative deviations.
+
+Lead deviation in feet and run cost in expected runs are therefore not interchangeable measures of baserunning quality. The framework provides a compact way to compare lead-taking behavior across players and teams while preserving the expected-runs consequences of the underlying baseball trade-off.
+
+\subsection{Limitations and Future Directions}
+
+The analysis has several limitations. First, we do not observe steal intent on a given pitch. Lead distance may therefore proxy for unobserved steal decisions, especially on pitches where the runner was planning to go. We partially address this by excluding lead distance from the steal-attempt model, but direct intent labels would allow a cleaner separation between strategic intent and realized positioning.
+
+Second, the fitted probabilities should be interpreted as model-implied quantities for the analyzed pitch sample rather than as fully calibrated league-wide event probabilities. This point mainly affects the level of the expected run value function, not the qualitative logic of the trade-off, but it is important when interpreting the numerical optimum as a recommendation.
+
+Third, the disengagement variable is constructed from observed pickoff attempts only. Because step-offs are not observed, this variable may understate the true number of disengagements in a plate appearance.
+
+Fourth, our model considers only the steal--pickoff trade-off (SB, CS, and PK). A larger lead also affects a runner's ability to advance on balls in play, including reaching second on a single, scoring from first on a double, and avoiding double plays. These effects are outside the scope of our model and are not captured in our run-cost estimates.
+
+Fifth, we restrict attention to the base state with a runner on first, with second and third base empty. Other base states would change both the RE24 payoffs and defensive behavior. Extending the model to all base-out states is a natural next step.
+
+Finally, the current model treats pitches as conditionally independent. In practice, pitchers, runners, and catchers adapt within plate appearances and across games. A dynamic model with plate-appearance history, pitch type, batter handedness, pitch location, score, inning, and leverage could better capture this strategic interaction.
+
+\subsection{Reproducibility}
+
+All analysis code and figure scripts are available at
+\url{https://github.com/WhartonSABI/mba2025_base-stealers}. Proprietary MLB data are not publicly available.
+
+\section{Acknowledgments}
+
+We would like to thank Moneyball Academy, led by Professor Abraham Wyner and the Wharton Sports Analytics and Business Initiative (WSABI), for supporting this research. We are also grateful to Major League Baseball for providing the data. We thank Noah Sonnenklar and Adam Kuechler for their mentorship and guidance, and our teammates, Will Diflorio and Jackson Hubbard, for their contributions over the summer.
+
+\bibliographystyle{apalike}
+\bibliography{references}
+
+\clearpage
+\appendix
+
+\begin{center}
+\Large\bfseries Appendix
+\end{center}
+
+\section{Full Model Estimates} \label{app:model-estimates}
 
 \begin{table}[htbp]
 \centering
@@ -314,107 +479,9 @@ outs\_f2           &  0.1899 & 0.1323 &   1.435 & $1.51\times10^{-1}$ \\
 
 \FloatBarrier
 
-\subsection{Expected Runs and Lead Deviation}
+\section{Team and Player Lead Deviation and Run Cost Figures} \label{app:a}
 
-For each pitcher--catcher--runner context $X_i=(\theta_i,p_i,v_i,r_i,o_i)$ and each candidate lead distance $L\in\mathcal{L}$, we compute $\mathrm{xRuns}(L\mid X_i)$ using Equation~\ref{eq:xRuns-estimable}. We then report the model-implied optimal lead as in Equation~\ref{eq:optimization}:
-\[
-    L_i^* = \underset{L\in\mathcal{L}}{\arg\max}\ \mathrm{xRuns}(L\mid X_i).
-\]
-We define lead deviation as
-\begin{equation}
-    d_i \equiv L_i^{\mathrm{obs}} - L_i^*. \label{eq:deviation}
-\end{equation}
-Positive values indicate observed leads that are larger than the model-implied optimum, while negative values indicate observed leads that are smaller. Across all runner-on-first observations, deviations are centered slightly above zero, with a mean of +0.13 ft (Figure~\ref{fig:deviation_all}). On steal attempts, the mean deviation remains positive but is smaller, +0.10 ft (Figure~\ref{fig:deviation_sba}). Thus, runners in this sample tend to take slightly more aggressive leads than the model recommends, though the average difference is small relative to typical primary lead distances.
-
-Additional visualizations of lead deviation are included in Appendix~\ref{app:a}.
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{figures/Lead-Error-All-MMNew.png}
-    \caption{Distribution of lead deviations across all situations. Positive values indicate observed leads larger than the model-implied optimum; the red vertical line and label mark the sample mean (+0.13 ft).}
-    \label{fig:deviation_all}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.8\textwidth]{figures/Lead-Error-SB-MMNew.png}
-    \caption{Distribution of lead deviations when a stolen base is attempted. The mean remains positive but is lower than the all-situations mean; the red vertical line and label mark the sample mean (+0.10 ft).}
-    \label{fig:deviation_sba}
-\end{figure}
-
-\subsection{Case Study: Cubs vs. Pirates, August 28, 2024}
-
-In an August 28, 2024 game between the Chicago Cubs and Pittsburgh Pirates, Pete Crow-Armstrong (PCA) took an 11.46-foot lead against pitcher Paul Skenes and catcher Yasmani Grandal (Figure~\ref{fig:example_case}). Given PCA's sprint speed of 30 ft/s, Skenes's estimated Threat of 4.04, Grandal's pop time of 2.09 seconds, and the game context, the model produces an optimal lead estimate of $L_i^*=11.33$ ft. PCA's observed lead exceeds this estimate by 0.13 ft, indicating a slightly more aggressive lead than the model-implied optimum.
-
-Figure~\ref{fig:implied_probs} displays the model-implied probabilities of SB, CS, and PK as functions of primary lead $L$, along with the expected run value $\mathrm{xRuns}(L\mid X_i)$. Figure~\ref{fig:optimal_lead} shows that a lead distance of 11.33 ft maximizes the estimated expected run value (+0.0122). This turning point reflects the lead-taking trade-off: larger leads increase the probability of reaching second safely, but eventually the increased pickoff risk dominates.
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/pca.png}
-    \caption{Pete Crow-Armstrong on first base, Paul Skenes pitching, and Yasmani Grandal catching offscreen. \citep{CubsvPirates2024}}
-    \label{fig:example_case}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/pca-probs-MMNew.png}
-    \caption{Model-implied outcome probabilities and estimated expected run value as functions of Pete Crow-Armstrong's primary lead distance. Probabilities and expected run value are shown on the same axis for visual comparison.}
-    \label{fig:implied_probs}
-\end{figure}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.9\textwidth]{figures/pca-xruns-MMNew.png}
-    \caption{Estimated expected run value as a function of Pete Crow-Armstrong's primary lead distance. The red marker denotes the model-implied optimal lead, and the blue dashed marker denotes PCA's observed lead in the play.}
-    \label{fig:optimal_lead}
-\end{figure}
-
-\section{Discussion}
-
-\subsection{Conclusions}
-
-This study proposes a framework for estimating primary lead distances off first base that maximize expected runs in the base state with a runner on first and second and third base empty. We model the baserunning sequence with a nested logistic and mixed-effects logistic stack, using runner sprint speed, catcher pop time, pitcher hold ability (\emph{Threat}), disengagement stage, outs, and runner/catcher random effects in the relevant stages. By mapping stage probabilities to RE24 run values, we obtain a context-specific model-implied optimal lead $L_i^*$ and a diagnostic measure of deviation, $L_i^{\mathrm{obs}}-L_i^*$.
-
-The fitted models capture the core trade-off in lead-taking. Increasing lead length is associated with higher steal-success probability but also with greater pickoff exposure, producing an expected run value profile with an interior maximum in the PCA case study and in the contexts considered here. Empirically, observed leads are modestly larger than the model-implied optimum on average ($\approx$ +0.13 ft), while steal attempts show a smaller positive deviation ($\approx$ +0.10 ft). The positive sign indicates that runners in this sample are, on average, slightly more aggressive than the model-implied optimum, though the magnitude is small.
-
-These findings offer an interpretable, data-driven basis for calibrating lead size. Rather than evaluating steals and pickoffs separately, the method places the full steal--pickoff trade-off on a common run-expectancy scale and produces context-specific recommendations within the range supported by the data.
-
-\subsection{Limitations and Future Directions}
-
-The analysis has several limitations. First, we do not observe steal intent on a given pitch. Lead distance may therefore proxy for unobserved green-light decisions, especially on pitches where the runner was planning to go. We partially address this by excluding lead distance from the steal-attempt model, but direct intent labels would allow a cleaner separation between strategic intent and realized positioning.
-
-Second, the fitted probabilities should be interpreted as model-implied quantities for the analyzed pitch sample rather than as fully calibrated league-wide event probabilities. This point mainly affects the level of the expected run value function, not the qualitative logic of the trade-off, but it is important when interpreting the numerical optimum as a recommendation.
-
-Third, the disengagement variable is constructed from observed pickoff attempts only. Because step-offs are not observed, this variable may understate the true number of disengagements in a plate appearance.
-
-Fourth, we restrict attention to the base state with a runner on first and second and third empty. Other base states would change both the RE24 payoffs and defensive behavior. Extending the model to all base-out states is a natural next step.
-
-Finally, the current model treats pitches as conditionally independent. In practice, pitchers, runners, and catchers adapt within plate appearances and across games. A dynamic model with plate-appearance history, pitch type, batter handedness, pitch location, score, inning, and leverage could better capture this strategic interaction.
-
-\subsection{Reproducibility}
-
-All analysis code and figure scripts are available
-\href{https://github.com/wharton-moneyball/stolen-base-leads}{here}. Proprietary MLB data are not publicly available.
-
-\section{Acknowledgments}
-
-We would like to thank Moneyball Academy, led by Professor Abraham Wyner and the Wharton Sports Analytics and Business Initiative (WSABI), for supporting this research. We are also grateful to Major League Baseball for providing the data. We thank Jonathan Pipping, Noah Sonnenklar, and Adam Kuechler for their mentorship and guidance, and our teammates, Will Diflorio and Jackson Hubbard, for their contributions over the summer.
-
-\bibliographystyle{apalike}
-\bibliography{references}
-
-\clearpage
-\appendix
-
-\begin{center}
-\Large\bfseries Appendix
-\end{center}
-
-\section{Additional Lead Deviation Visualizations} \label{app:a}
-
-Figure~\ref{fig:deviation_by_team} reports the mean absolute lead deviation by team across all runner-on-first events. Lower values indicate closer adherence to the model-implied optimal lead. In this sample, the New York Yankees exhibit the largest mean absolute deviation by a substantial margin (about 0.61 ft above the next highest team), whereas the Cleveland Guardians and Seattle Mariners exhibit the lowest deviations.
-
-All runner lists below include only players with at least 15 observations. These plots should be read as exploratory summaries rather than definitive rankings, since the estimates do not include uncertainty intervals. Figure~\ref{fig:runners_closest} displays the runners with the smallest absolute mean lead deviation. Figures~\ref{fig:runners_aggressive} and~\ref{fig:runners_conservative} show the tails of the signed distribution: the former lists runners with the most positive average deviations, and the latter lists runners with the most negative average deviations. Jahmai Jones, Ryan O'Hearn, and Nelson Velazquez are closest to the model-implied optimum on average. Daniel Vogelbach, Wilmer Flores, and Brandon Crawford take the most aggressive leads on average, while Brooks Baldwin, Anthony Volpe, and Juan Soto take the most conservative leads on average.
+This appendix presents the team- and player-level summaries of lead deviation and run cost referenced in Sections~\ref{sec:player-team-deviation} and~\ref{sec:run-cost}. All runner lists include only players with at least 15 observations.
 
 \begin{figure}[!htbp]
     \centering
@@ -425,23 +492,12 @@ All runner lists below include only players with at least 15 observations. These
 
 \begin{figure}[!htbp]
     \centering
-    \includegraphics[width=0.8\textwidth]{figures/closest_to_optimal_leads.png}
-    \caption{Baserunners with the smallest absolute average lead deviation among runners with at least 15 observations.}
-    \label{fig:runners_closest}
+    \includegraphics[width=0.9\textwidth]{figures/team-run-cost.png}
+    \caption{Total model-implied run cost by team in 2024. Compare to Figure~\ref{fig:deviation_by_team}: teams that deviate most in feet do not necessarily incur the largest run cost.}
+    \label{fig:team_run_cost}
 \end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.75\textwidth]{figures/aggressive_leads.png}
-    \caption{Baserunners with the most positive average lead deviations. Positive deviations indicate observed leads larger than the model-implied optimum.}
-    \label{fig:runners_aggressive}
-\end{figure}
-
-\begin{figure}[!htbp]
-    \centering
-    \includegraphics[width=0.75\textwidth]{figures/conservative_leads.png}
-    \caption{Baserunners with the most negative average lead deviations. Negative deviations indicate observed leads smaller than the model-implied optimum.}
-    \label{fig:runners_conservative}
-\end{figure}
+\input{tables/closest_to_optimal_leads.tex}
+\input{tables/aggressive_leads.tex}
+\input{tables/conservative_leads.tex}
 
 \end{document}

@@ -104,25 +104,22 @@ obs_xruns <- as.numeric(
 
 grid_long <- grid_df %>%
   pivot_longer(
-    cols = c("xRuns", "P_PK", "P_SB", "P_CS"),
+    cols = c("P_PK", "P_SB", "P_CS"),
     names_to = "metric",
     values_to = "value"
   )
 
 colormap <- c(
-  "xRuns" = "#0072B2",
   "P_PK" = "#D55E00",
   "P_SB" = "#009E73",
   "P_CS" = "#E69F00"
 )
 
 fig_probs <- ggplot(grid_long, aes(x = PrimaryLead1B, y = value, color = metric, group = metric)) +
-  geom_line(aes(linewidth = metric == "xRuns"), show.legend = TRUE) +
-  scale_linewidth_manual(values = c("TRUE" = 1.2, "FALSE" = 0.8), guide = "none") +
+  geom_line(linewidth = 0.9, show.legend = TRUE) +
   scale_color_manual(
     values = colormap,
     labels = c(
-      "xRuns" = "xRuns",
       "P_PK" = "Pickoff Prob.",
       "P_SB" = "Stolen Base Prob.",
       "P_CS" = "Caught Stealing Prob."
@@ -130,9 +127,9 @@ fig_probs <- ggplot(grid_long, aes(x = PrimaryLead1B, y = value, color = metric,
   ) +
   scale_x_continuous(breaks = seq(0, 20, by = 5), limits = c(0, 20), expand = c(0, 0)) +
   labs(
-    title = "Model Results: PCA vs. Skenes/Grandal",
+    title = "Model-Implied Outcome Probabilities: PCA vs. Skenes/Grandal",
     x = "Primary Lead at 1B (ft)",
-    y = ""
+    y = "Probability"
   ) +
   theme_minimal(base_size = 13) +
   theme(legend.position = "top", legend.title = element_blank())

@@ -3,9 +3,11 @@ source("scripts/00_helpers.R")
 suppressPackageStartupMessages({
   library(dplyr)
   library(ggplot2)
+  library(knitr)
+  library(scales)
 })
 
-ensure_dirs(c("paper/figures", "internal"))
+ensure_dirs(c("paper/figures", "paper/tables", "internal"))
 
 message("03_make_paper_figures.R starting")
 
@@ -135,10 +137,94 @@ ggsave(
 # ----------------------------
 # Runner-level appendix tables
 # ----------------------------
-suppressPackageStartupMessages({
-    library(gt)
-    library(scales)
-})
+
+save_latex_table <- function(
+  df,
+  filename,
+  caption,
+  label,
+  align,
+  stripe_color
+) {
+  tabular <- knitr::kable(
+    df,
+    format = "latex",
+    booktabs = TRUE,
+    align = align,
+    linesep = "",
+    escape = TRUE
+  )
+
+  tabular_lines <- strsplit(tabular, "\n", fixed = TRUE)[[1]]
+  top_rule_idx <- match("\\toprule", tabular_lines)
+  if (!is.na(top_rule_idx)) {
+    tabular_lines <- append(
+      tabular_lines,
+      values = paste0("\\rowcolor{", stripe_color, "!25}"),
+      after = top_rule_idx
+    )
+  }
+
+  out_lines <- c(
+    "\\begin{table}[!htbp]",
+    "\\centering",
+    "\\small",
+    paste0("\\caption{", caption, "}"),
+    paste0("\\label{", label, "}"),
+    paste0("\\rowcolors{2}{", stripe_color, "!10}{white}"),
+    tabular_lines,
+    "\\end{table}"
+  )
+
+  writeLines(out_lines, con = filename)
+}
+
+save_rank_bar <- function(
+  df,
+  filename,
+  title,
+  fill_color,
+  width_px = 1160,
+  height_px = 460
+) {
+  plot_df <- df %>%
+    mutate(
+      Runner1B = factor(Runner1B, levels = rev(Runner1B)),
+      label = sprintf("%.2f", total_cost)
+    )
+
+  fig <- ggplot(plot_df, aes(x = total_cost, y = Runner1B)) +
+    geom_col(fill = fill_color, width = 0.7) +
+    geom_text(
+      aes(label = label),
+      hjust = -0.1,
+      size = 3.6,
+      color = "#333333"
+    ) +
+    scale_x_continuous(
+      expand = expansion(mult = c(0, 0.18)),
+      labels = label_number(accuracy = 0.01)
+    ) +
+    labs(
+      title = title,
+      x = "Total xRuns Lost",
+      y = NULL
+    ) +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(face = "bold", size = 13),
+      panel.grid.major.y = element_blank(),
+      panel.grid.minor = element_blank()
+    )
+
+  ggsave(
+    filename = filename,
+    plot = fig,
+    width = width_px / 150,
+    height = height_px / 150,
+    dpi = 150
+  )
+}
 
 runner_tbl <- leads_full %>%
     group_by(Runner1B) %>%
@@ -164,54 +250,21 @@ closest_table <- runner_tbl %>%
     slice_head(n = 10) %>%
     mutate(absChange = round(absChange, 2)) %>%
     select(Runner1B, Team, absChange, n_obs) %>%
-    gt() %>%
-    tab_header(
-        title = md("**Runners Closest to Optimal**"),
-        subtitle = "Smallest absolute deviation from optimal lead (min. 15 observations)"
-    ) %>%
-    cols_label(
-        Runner1B = "Runner",
-        Team = "Team",
-        absChange = "Absolute Deviation (ft)",
-        n_obs = "Observations"
-    ) %>%
-    cols_width(
-        Runner1B ~ px(150),
-        Team ~ px(75),
-        absChange ~ px(180),
-        n_obs ~ px(110)
-    ) %>%
-    data_color(
-        columns = absChange,
-        colors = scales::col_numeric(
-            palette = c("#B7D9BE", "#6FAE86"),
-            domain = NULL,
-            reverse = TRUE
-        )
-    ) %>%
-    tab_style(
-        style = list(
-            cell_text(weight = "bold", size = px(15)),
-            cell_fill(color = "#f0f0f0")
-        ),
-        locations = cells_column_labels()
-    ) %>%
-    tab_style(
-        style = cell_text(size = px(14)),
-        locations = cells_body()
-    ) %>%
-    cols_align(align = "center", columns = c(Team, absChange, n_obs)) %>%
-    cols_align(align = "left", columns = Runner1B) %>%
-    opt_row_striping() %>%
-    tab_options(
-        table.font.size = px(14),
-        heading.title.font.size = px(20),
-        heading.subtitle.font.size = px(13),
-        table.width = px(520),
-        data_row.padding = px(6)
+    rename(
+      Runner = Runner1B,
+      Team = Team,
+      `Absolute Deviation (ft)` = absChange,
+      Observations = n_obs
     )
 
-gtsave(closest_table, "paper/figures/closest_to_optimal_leads.png")
+save_latex_table(
+  closest_table,
+  filename = "paper/tables/closest_to_optimal_leads.tex",
+  caption = "Baserunners with the smallest absolute average lead deviation among runners with at least 15 observations.",
+  label = "tab:runners_closest",
+  align = c("l", "c", "r", "r"),
+  stripe_color = "green"
+)
 
 # Conservative runners
 conservative_table <- runner_tbl %>%
@@ -219,53 +272,21 @@ conservative_table <- runner_tbl %>%
     slice_head(n = 10) %>%
     mutate(meanChange = round(meanChange, 2)) %>%
     select(Runner1B, Team, meanChange, n_obs) %>%
-    gt() %>%
-    tab_header(
-        title = md("**Most Conservative Runners**"),
-        subtitle = "Taking Shorter Leads Than Optimal (min. 15 observations)"
-    ) %>%
-    cols_label(
-        Runner1B = "Runner",
-        Team = "Team",
-        meanChange = "Mean Deviation (ft)",
-        n_obs = "Observations"
-    ) %>%
-    cols_width(
-        Runner1B ~ px(150),
-        Team ~ px(75),
-        meanChange ~ px(160),
-        n_obs ~ px(110)
-    ) %>%
-    data_color(
-        columns = meanChange,
-        colors = scales::col_numeric(
-            palette = c("#00008B", "#ADD8E6"),
-            domain = NULL
-        )
-    ) %>%
-    tab_style(
-        style = list(
-            cell_text(weight = "bold", size = px(15)),
-            cell_fill(color = "#f0f0f0")
-        ),
-        locations = cells_column_labels()
-    ) %>%
-    tab_style(
-        style = cell_text(size = px(14)),
-        locations = cells_body()
-    ) %>%
-    cols_align(align = "center", columns = c(Team, meanChange, n_obs)) %>%
-    cols_align(align = "left", columns = Runner1B) %>%
-    opt_row_striping() %>%
-    tab_options(
-        table.font.size = px(14),
-        heading.title.font.size = px(20),
-        heading.subtitle.font.size = px(13),
-        table.width = px(500),
-        data_row.padding = px(6)
+    rename(
+      Runner = Runner1B,
+      Team = Team,
+      `Mean Deviation (ft)` = meanChange,
+      Observations = n_obs
     )
 
-gtsave(conservative_table, "paper/figures/conservative_leads.png")
+save_latex_table(
+  conservative_table,
+  filename = "paper/tables/conservative_leads.tex",
+  caption = "Baserunners with the most negative average lead deviations among runners with at least 15 observations.",
+  label = "tab:runners_conservative",
+  align = c("l", "c", "r", "r"),
+  stripe_color = "blue"
+)
 
 # Aggressive runners
 aggressive_table <- runner_tbl %>%
@@ -273,59 +294,96 @@ aggressive_table <- runner_tbl %>%
     slice_head(n = 10) %>%
     mutate(meanChange = round(meanChange, 2)) %>%
     select(Runner1B, Team, meanChange, n_obs) %>%
-    gt() %>%
-    tab_header(
-        title = md("**Most Aggressive Runners**"),
-        subtitle = "Taking Longer Leads Than Optimal (min. 15 observations)"
-    ) %>%
-    cols_label(
-        Runner1B = "Runner",
-        Team = "Team",
-        meanChange = "Mean Deviation (ft)",
-        n_obs = "Observations"
-    ) %>%
-    cols_width(
-        Runner1B ~ px(150),
-        Team ~ px(75),
-        meanChange ~ px(160),
-        n_obs ~ px(110)
-    ) %>%
-    data_color(
-        columns = meanChange,
-        colors = scales::col_numeric(
-            palette = c("#FFB6C1", "#8B0000"),
-            domain = NULL
-        )
-    ) %>%
-    tab_style(
-        style = list(
-            cell_text(weight = "bold", size = px(15)),
-            cell_fill(color = "#f0f0f0")
-        ),
-        locations = cells_column_labels()
-    ) %>%
-    tab_style(
-        style = cell_text(size = px(14)),
-        locations = cells_body()
-    ) %>%
-    cols_align(align = "center", columns = c(Team, meanChange, n_obs)) %>%
-    cols_align(align = "left", columns = Runner1B) %>%
-    opt_row_striping() %>%
-    tab_options(
-        table.font.size = px(14),
-        heading.title.font.size = px(20),
-        heading.subtitle.font.size = px(13),
-        table.width = px(500),
-        data_row.padding = px(6)
+    rename(
+      Runner = Runner1B,
+      Team = Team,
+      `Mean Deviation (ft)` = meanChange,
+      Observations = n_obs
     )
 
-gtsave(aggressive_table, "paper/figures/aggressive_leads.png")
+save_latex_table(
+  aggressive_table,
+  filename = "paper/tables/aggressive_leads.tex",
+  caption = "Baserunners with the most positive average lead deviations among runners with at least 15 observations.",
+  label = "tab:runners_aggressive",
+  align = c("l", "c", "r", "r"),
+  stripe_color = "red"
+)
+
+# ----------------------------
+# Team and player run-cost figures
+# ----------------------------
+team_cost_tbl <- leads_full %>%
+  filter(!is.na(RunnerTeam), !is.na(xRuns_lost)) %>%
+  group_by(RunnerTeam) %>%
+  summarise(
+    total_cost = sum(xRuns_lost, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+fig_team_cost <- ggplot(team_cost_tbl, aes(x = reorder(RunnerTeam, total_cost), y = total_cost, fill = RunnerTeam)) +
+  geom_col(color = "black", linewidth = 0.15) +
+  scale_fill_manual(values = team_colors, na.value = "grey70") +
+  labs(
+    title = "Total Model-Implied Run Cost by Team",
+    x = "Team",
+    y = "Total xRuns Lost"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "none"
+  )
+
+ggsave(
+  filename = "paper/figures/team-run-cost.png",
+  plot = fig_team_cost,
+  width = 12,
+  height = 7,
+  dpi = 300
+)
+
+runner_cost_tbl <- leads_full %>%
+  group_by(Runner1B) %>%
+  summarise(
+    meanChange = mean(leadDev_player, na.rm = TRUE),
+    total_cost = sum(xRuns_lost, na.rm = TRUE),
+    n_obs = n(),
+    .groups = "drop"
+  ) %>%
+  filter(n_obs >= 15) %>%
+  left_join(runner_team, by = "Runner1B")
+
+cost_aggressive <- runner_cost_tbl %>%
+  filter(meanChange > 0) %>%
+  arrange(desc(total_cost)) %>%
+  slice_head(n = 5)
+
+cost_conservative <- runner_cost_tbl %>%
+  filter(meanChange < 0) %>%
+  arrange(desc(total_cost)) %>%
+  slice_head(n = 5)
+
+save_rank_bar(
+  cost_aggressive,
+  filename = "paper/figures/run_cost_aggressive.png",
+  title = "Most Costly Aggressive Runners",
+  fill_color = "#b22222"
+)
+
+save_rank_bar(
+  cost_conservative,
+  filename = "paper/figures/run_cost_conservative.png",
+  title = "Most Costly Conservative Runners",
+  fill_color = "#1f4e79"
+)
 
 sink("internal/03_figure_summary.txt")
 cat("Figure generation complete\n")
 cat("Mean lead deviation (all):", mean_all, "\n")
 cat("Mean lead deviation (SB attempts):", mean_sb, "\n")
 cat("Runner sample (n >= 15):", nrow(runner_tbl), "\n")
+cat("Total xRuns lost:", sum(leads_full$xRuns_lost, na.rm = TRUE), "\n")
 sink()
 
 message("03_make_paper_figures.R complete")
